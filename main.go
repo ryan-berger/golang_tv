@@ -36,7 +36,6 @@ func main() {
 	if err := llvm.VerifyModule(module, llvm.PrintMessageAction); err != nil {
 		panic(err)
 	}
-	//llvmFn.Dump()
 
-	alive.Validate(module)
+	alive.Validate(module, llvmFn, llvmFn)
 }

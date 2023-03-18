@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-void validate(LLVMModuleRef r);
+void validate(LLVMModuleRef m, LLVMValueRef src, LLVMValueRef tgt);
 
 #ifdef __cplusplus
 }
