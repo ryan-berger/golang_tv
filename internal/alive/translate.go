@@ -5,7 +5,6 @@ package alive
 // #include "alive.h"
 import "C"
 import (
-	"fmt"
 	"tinygo.org/x/go-llvm"
 	"unsafe"
 )
@@ -17,5 +16,4 @@ func Validate(module llvm.Module, src, tgt llvm.Value) {
 	C.validate((C.LLVMModuleRef)(unsafe.Pointer(module.C)),
 		(C.LLVMValueRef)(unsafe.Pointer(src.C)),
 		(C.LLVMValueRef)(unsafe.Pointer(tgt.C)))
-	fmt.Println("done!")
 }
