@@ -26,7 +26,7 @@ You also should grab the source of ryan-berger/go-llvm and checkout the golang-t
 You will likely have to edit the linking commands to fit your install paths, so prepare to use a `go.work`
 to link things up.
 
-Alive2 and tinygo-org/go-llvm have some different needs from the LLVM build,
+Alive2 and tinygo-org/go-llvm (well, the fork) have some different needs from the LLVM build,
 so instead of running Alive's LLVM build command of:
 ```
 cd llvm
@@ -43,7 +43,9 @@ cd build
 cmake -GNinja -DLLVM_ENABLE_RTTI=ON -DLLVM_ENABLE_EH=ON -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Debug -DLLVM_ENABLE_ASSERTIONS=ON -DLLVM_ENABLE_PROJECTS="llvm;clang" ../llvm
 ```
 
-Change the end of Alive2's build command from 
+So that tinygo-org/go-llvm (well, the fork) can get all the backend generation dependencies it needs.
+
+Then, Change the end of Alive2's build command from 
 
 ```
 Release ..
@@ -53,8 +55,6 @@ to
 ```
 Debug ..
 ```
-
-So that tinygo-org/go-llvm can get all the backend generation dependencies it needs.
 
 With this all set up, you should be good to go.
 
