@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 
+#######################################
+##### Un-internals your compiler ######
+#######################################
+
+# TODO, make this a bit better so go upgrades don't hurt really bad
+
 mkdir internal/src
 mkdir internal/src/cmd
 

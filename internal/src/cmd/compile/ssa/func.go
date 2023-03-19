@@ -5,14 +5,28 @@
 package ssa
 
 import (
-	"github.com/ryan-berger/golang_tv/internal/src/cmd/internal_compile/src"
 	"fmt"
 	"github.com/ryan-berger/golang_tv/internal/src/cmd/compile/abi"
 	"github.com/ryan-berger/golang_tv/internal/src/cmd/compile/base"
 	"github.com/ryan-berger/golang_tv/internal/src/cmd/compile/types"
+	"github.com/ryan-berger/golang_tv/internal/src/cmd/internal_compile/src"
 	"math"
 	"strings"
 )
+
+func init() {
+	var hasSeenLower bool
+	for i, p := range passes {
+		if p.name == "lower" {
+			hasSeenLower = true
+		}
+
+		if hasSeenLower {
+			passes[i].disabled = true
+		}
+
+	}
+}
 
 // A Func represents a Go func declaration (or function literal) and its body.
 // This package compiles each Func independently.

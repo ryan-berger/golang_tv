@@ -6,36 +6,24 @@ package main
 
 import (
 	"fmt"
-	"github.com/ryan-berger/golang_tv/internal/alive"
+	"github.com/ryan-berger/golang_tv/alive"
+	"github.com/ryan-berger/golang_tv/internal/gen"
+	"os"
 	"tinygo.org/x/go-llvm"
 )
 
 func main() {
-	llvm.InitializeAllTargets()
-	llvm.InitializeAllTargetMCs()
-	llvm.InitializeAllTargetInfos()
-	llvm.InitializeAllAsmParsers()
-	llvm.InitializeAllAsmPrinters()
-
-	ctx := llvm.NewContext()
-
-	module := ctx.NewModule("main")
-	builder := ctx.NewBuilder()
-
-	defer builder.Dispose()
-
-	fnType := llvm.FunctionType(ctx.VoidType(), nil, false)
-
-	llvmFn := llvm.AddFunction(module, "src", fnType)
-
-	bb := ctx.AddBasicBlock(llvmFn, fmt.Sprintf("%s_bb", "src"))
-	builder.SetInsertPointAtEnd(bb)
-
-	builder.CreateAdd(llvm.ConstInt(ctx.Int64Type(), 12, false), llvm.ConstInt(ctx.Int64Type(), 33, false), "add")
-	builder.CreateRetVoid()
-	if err := llvm.VerifyModule(module, llvm.PrintMessageAction); err != nil {
-		panic(err)
+	src, tgt, err := gen.GenSSA("tests/validate.go")
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
 	}
 
-	alive.Validate(module, llvmFn, llvmFn)
+	ctx := llvm.NewContext()
+	module := ctx.NewModule("main")
+
+	fmt.Println(src, tgt)
+	srcIR, tgtIR := gen.SSA2LLVM(module, src, tgt)
+
+	alive.Validate(module, srcIR, tgtIR)
 }

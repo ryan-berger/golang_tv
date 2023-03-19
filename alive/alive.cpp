@@ -14,25 +14,26 @@
 #include "smt/smt.h"
 #include "tools/transform.h"
 #include "util/version.h"
-
-
+#include "util/config.h"
 
 void validate(LLVMModuleRef m, LLVMValueRef src, LLVMValueRef tgt) {
     auto srcFn = llvm::unwrap<llvm::Function>(src);
     auto tgtFn = llvm::unwrap<llvm::Function>(tgt);
 
-    std::cout << srcFn << std::endl;
     auto mod = llvm::unwrap(m);
 
     auto &DL = mod->getDataLayout();
     auto targetTriple = llvm::Triple(mod->getTargetTriple());
     auto TLI = llvm::TargetLibraryInfoWrapperPass(targetTriple);
 
+
+    // go doesn't have undef/poison??
+    util::config::disable_undef_input = true;
+    util::config::disable_poison_input = true;
+
     llvm_util::initializer llvm_util_init(std::cout, DL);
     smt::smt_initializer smt_init;
     llvm_util::Verifier verifier(TLI, smt_init, std::cout);
-
-    std::cout << "running verifier";
 
     verifier.compareFunctions(*srcFn, *tgtFn);
 }
