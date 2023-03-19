@@ -66,6 +66,149 @@ Source and Target, which are read in from `tests/validate.go`.
 In the future, it should also support one function that validates 
 that all Go optimization passes are valid
 
+### Example:
+```go
+func Src(a, b int) int {
+	return (a >> b) << b
+}
+
+func Tgt(a, b int) int {
+	return a >> (b << b)
+}
+```
+
+We feed it to golang_tv and it spits out:
+```
+Src func(int, int) int // Go's SSA
+  b1:
+    (?) v1 = InitMem <mem>
+    (-3) v7 = ArgIntReg <int> {a+0} [0] (a[int])
+    (-3) v8 = ArgIntReg <int> {b+0} [1] (b[int])
+    (?) v9 = Const64 <int> [0]
+    (+4) v10 = Leq64 <bool> v9 v8
+    (?) v11 = Const64 <int64> [0] DEAD
+    If v10 -> b4 b3 (likely)
+  b2: DEAD
+    BlockInvalid
+  b3: <- b1
+    (4) v12 = StaticCall <mem> {AuxCall{runtime.panicshift}} v1
+    Exit v12
+  b4: <- b1
+    (4) v14 = Rsh64x64 <int> [false] v7 v8
+    (+4) v17 = Lsh64x64 <int> [false] v14 v8
+    (4) v18 = MakeResult <int,mem> v17 v1
+    Ret v18
+name a[int]: [v7]
+name b[int]: [v8]
+ Tgt func(int, int) int
+  b1:
+    (?) v1 = InitMem <mem>
+    (-7) v7 = ArgIntReg <int> {a+0} [0] (a[int])
+    (-7) v8 = ArgIntReg <int> {b+0} [1] (b[int])
+    (?) v9 = Const64 <int> [0]
+    (+8) v10 = Leq64 <bool> v9 v8
+    (?) v6 = Const64 <int64> [0] DEAD
+    If v10 -> b2 b3 (likely)
+  b2: <- b1
+    (8) v14 = Lsh64x64 <int> [false] v8 v8
+    (8) v15 = Leq64 <bool> v9 v14
+    If v15 -> b4 b3 (likely)
+  b3: <- b1 b2
+    (8) v12 = StaticCall <mem> {AuxCall{runtime.panicshift}} v1
+    Exit v12
+  b4: <- b2
+    (8) v16 = Rsh64x64 <int> [false] v7 v14
+    (8) v17 = MakeResult <int,mem> v16 v1
+    Ret v17
+name a[int]: [v7]
+name b[int]: [v8]
+
+
+---------------------------------------- // Alive IR
+define {i64} @src({i64, i64} %0) {
+%b1:
+  %v7 = extractvalue {i64, i64} %0, 0
+  %v8 = extractvalue {i64, i64} %0, 1
+  %v10 = icmp sle i64 0, %v8
+  br i1 %v10, label %b4, label %b3
+
+%b3:
+  assume i1 0
+
+%b4:
+  %should_clamp = icmp sge i64 %v8, 63
+  %clamped = select i1 %should_clamp, i64 63, i64 %v8
+  %v14 = ashr i64 %v7, %clamped
+  %should_clamp1 = icmp sge i64 %v8, 63
+  %clamped2 = select i1 %should_clamp1, i64 63, i64 %v8
+  %v17 = lshr i64 %v14, %clamped2
+  %first = insertvalue {i64} undef, i64 %v17, 0
+  ret {i64} %first
+}
+=>
+define {i64} @tgt({i64, i64} %0) {
+%b1:
+  %v7 = extractvalue {i64, i64} %0, 0
+  %v8 = extractvalue {i64, i64} %0, 1
+  %v10 = icmp sle i64 0, %v8
+  br i1 %v10, label %b2, label %b3
+
+%b2:
+  %should_clamp = icmp sge i64 %v8, 63
+  %clamped = select i1 %should_clamp, i64 63, i64 %v8
+  %v14 = lshr i64 %v8, %clamped
+  %v15 = icmp sle i64 0, %v14
+  br i1 %v15, label %b4, label %b3
+
+%b4:
+  %should_clamp1 = icmp sge i64 %v14, 63
+  %clamped2 = select i1 %should_clamp1, i64 63, i64 %v14
+  %v16 = ashr i64 %v7, %clamped2
+  %first = insertvalue {i64} undef, i64 %v16, 0
+  ret {i64} %first
+
+%b3:
+  assume i1 0
+}
+Transformation doesn't verify!
+
+ERROR: Value mismatch
+
+Example:
+{i64, i64} %0 = { #x0000000000000004 (4), #x0000000000000020 (32) }
+
+Source:
+i64 %v7 = #x0000000000000004 (4)
+i64 %v8 = #x0000000000000020 (32)
+i1 %v10 = #x1 (1)
+  >> Jump to %b4
+i1 %should_clamp = #x0 (0)
+i64 %clamped = #x0000000000000020 (32)
+i64 %v14 = #x0000000000000000 (0)
+i1 %should_clamp1 = #x0 (0)
+i64 %clamped2 = #x0000000000000020 (32)
+i64 %v17 = #x0000000000000000 (0)
+{i64} %first = { #x0000000000000000 (0) }
+
+Target:
+i64 %v7 = #x0000000000000004 (4)
+i64 %v8 = #x0000000000000020 (32)
+i1 %v10 = #x1 (1)
+  >> Jump to %b2
+i1 %should_clamp = #x0 (0)
+i64 %clamped = #x0000000000000020 (32)
+i64 %v14 = #x0000000000000000 (0)
+i1 %v15 = #x1 (1)
+  >> Jump to %b4
+i1 %should_clamp1 = #x0 (0)
+i64 %clamped2 = #x0000000000000000 (0)
+i64 %v16 = #x0000000000000004 (4)
+{i64} %first = { #x0000000000000004 (4) }
+Source value: { #x0000000000000000 (0) }
+Target value: { #x0000000000000004 (4) }
+```
+Looks like `(a >> b) << b` is not the same as `a >> (b << b)`! The example it gives is when a=4, b=32, which causes Src to retur 0 and Tgt to return 4
+
 ## Contributing
 
 A simple PR will do!
