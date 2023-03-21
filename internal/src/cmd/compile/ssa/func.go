@@ -15,16 +15,16 @@ import (
 )
 
 func init() {
-	var hasSeenLower bool
-	for i, p := range passes {
+	for i, p := range passes { // we only want all the way down to lower, no more
 		if p.name == "lower" {
-			hasSeenLower = true
+			// we need to deadcode immediately so that we aren't having to gen
+			// dead code
+			passes = append(passes[:i],
+				pass{name: "golang_tv deadcode", fn: deadcode},
+				pass{name: "golang_tv schedule", fn: schedule}, // block values are out of order???
+			)
+			return
 		}
-
-		if hasSeenLower {
-			passes[i].disabled = true
-		}
-
 	}
 }
 

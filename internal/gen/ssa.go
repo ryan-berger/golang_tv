@@ -29,7 +29,7 @@ func ssaIt(irFn *ir.Func, worker int) *ssa.Func {
 	// Calculate parameter offsets.
 	types.CalcSize(irFn.Type())
 
-	// set up some symbol lookup table, necessary for calling runtime functions
+	// this will set up some symbol lookup table, necessary for calling runtime functions
 	// - ryan-berger
 	ir.InitLSym(irFn, false)
 	a := ssagen.AbiForBodylessFuncStackMap(irFn)

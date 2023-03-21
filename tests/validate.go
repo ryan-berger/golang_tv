@@ -1,9 +1,9 @@
 package tests
 
-func Src(a, b int) int {
-	return a + b
+func Src(a []int) int {
+	return a[0]
 }
 
-func Tgt(a, b int) int {
-	return b + a
+func Tgt(a []int) int {
+	return a[33]
 }

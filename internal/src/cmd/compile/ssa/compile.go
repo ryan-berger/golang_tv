@@ -454,7 +454,7 @@ commas. For example:
 }
 
 // list of passes for the compiler
-var passes = [...]pass{
+var passes = []pass{
 	// TODO: combine phielim and copyelim into a single pass?
 	{name: "number lines", fn: numberLines, required: true},
 	{name: "early phielim", fn: phielim},
@@ -540,7 +540,7 @@ var passOrder = [...]constraint{
 	// nilcheckelim generates sequences of plain basic blocks
 	{"nilcheckelim", "late fuse"},
 	// nilcheckelim relies on opt to rewrite user nil checks
-	{"opt", "nilcheckelim"},
+	//{"opt", "nilcheckelim"},
 	// tighten will be most effective when as many values have been removed as possible
 	{"generic deadcode", "tighten"},
 	{"generic cse", "tighten"},

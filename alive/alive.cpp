@@ -30,6 +30,7 @@ void validate(LLVMModuleRef m, LLVMValueRef src, LLVMValueRef tgt) {
     // go doesn't have undef/poison??
     util::config::disable_undef_input = true;
     util::config::disable_poison_input = true;
+    util::config::enable_approx_int2ptr = true;
 
     llvm_util::initializer llvm_util_init(std::cout, DL);
     smt::smt_initializer smt_init;
