@@ -1,6 +1,8 @@
 package gen
 
 import (
+	"fmt"
+	"github.com/ryan-berger/golang_tv/internal/src/cmd/compile/ir"
 	"github.com/ryan-berger/golang_tv/internal/src/cmd/compile/ssa"
 	"github.com/ryan-berger/golang_tv/internal/src/cmd/compile/types"
 	"math"
@@ -110,21 +112,31 @@ func (l *llvmGenerator) genVal(fn llvm.Value, val *ssa.Value) {
 		arg := l.curFn[val.Args[0].String()]
 
 		v = l.builder.CreateLoad(llvmType, arg, val.String())
+	case ssa.OpLocalAddr:
+		offset := val.Aux.(*ir.Name)
+		n := l.curFn[offset.Sym().Name]
+
+		a := l.builder.CreateAlloca(l.ctx.Int8Type(), fmt.Sprintf("%s_ptr", offset.Sym().Name))
+		l.builder.CreateStore(n, a)
+
+		v = a
 	case ssa.OpOffPtr:
 		arg := l.curFn[val.Args[0].String()]
-		rawPtr := l.builder.CreatePtrToInt(
-			arg, l.ctx.Int64Type(), "ptr_to_int")
-		offset := l.builder.CreateAdd(
-			rawPtr,
-			llvm.ConstInt(l.ctx.Int64Type(), uint64(val.AuxInt), false), "offset")
-		v = l.builder.CreateIntToPtr(offset, arg.Type(), val.String())
+
+		// calculate GEP as if the ptr was a char*, opaque pointers make this easy!
+		charPtr := llvm.PointerType(l.ctx.Int8Type(), 0)
+		v = l.builder.CreateGEP(charPtr, arg,
+			[]llvm.Value{
+				llvm.ConstInt(l.ctx.Int64Type(), uint64(val.AuxInt), false),
+			},
+			val.String())
 	case ssa.OpIsInBounds:
 		index := l.curFn[val.Args[0].String()]
 		length := l.curFn[val.Args[1].String()]
 
 		// make sure that the int is greather t
-		gtZero := l.builder.CreateICmp(llvm.IntSGT, index, llvm.ConstInt(l.ctx.Int64Type(), 0, false), "gtZero")
-		ltLength := l.builder.CreateICmp(llvm.IntSLT, index, length, "gtZero")
+		gtZero := l.builder.CreateICmp(llvm.IntSGE, index, llvm.ConstInt(l.ctx.Int64Type(), 0, false), "gtZero")
+		ltLength := l.builder.CreateICmp(llvm.IntSLT, index, length, "ltLength")
 
 		v = l.builder.CreateAnd(gtZero, ltLength, val.String())
 	case ssa.OpCom64:
@@ -257,9 +269,10 @@ func SSA2LLVM(module llvm.Module, src, tgt *ssa.Func) (llvm.Value, llvm.Value) {
 	tgtLLVM := b.genFn(tgt)
 	//_ = b.genFn(tgt)
 
-	//if err := llvm.VerifyModule(module, llvm.PrintMessageAction); err != nil {
-	//	panic(err)
-	//}
+	module.Dump()
+	if err := llvm.VerifyModule(module, llvm.PrintMessageAction); err != nil {
+		panic(err)
+	}
 
 	return srcLLVM, tgtLLVM
 }
