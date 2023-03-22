@@ -55,6 +55,8 @@ func (l *llvmGenerator) goTypeToLLVMType(typ *types.Type) llvm.Type {
 		)
 	case types.TPTR:
 		return llvm.PointerType(l.goTypeToLLVMType(typ.Underlying()), 0)
+	default:
+		panic(fmt.Sprintf(`typecheck err: verification with type "%s" is not currently supported by golang_tv`, typ.String()))
 
 	}
 
@@ -139,7 +141,7 @@ func (l *llvmGenerator) genVal(fn llvm.Value, val *ssa.Value) {
 		ltLength := l.builder.CreateICmp(llvm.IntSLT, index, length, "ltLength")
 
 		v = l.builder.CreateAnd(gtZero, ltLength, val.String())
-	case ssa.OpCom64:
+	case ssa.OpCom64, ssa.OpCom32, ssa.OpCom16, ssa.OpCom8:
 		v = l.builder.CreateNot(l.curFn[val.Args[0].String()], val.String())
 	case ssa.OpAnd64:
 		v = l.builder.CreateAnd(l.curFn[val.Args[0].String()], l.curFn[val.Args[1].String()], val.String())
@@ -193,6 +195,8 @@ func (l *llvmGenerator) genVal(fn llvm.Value, val *ssa.Value) {
 		iv := l.builder.CreateInsertValue(llvm.Undef(ret), l.curFn[val.Args[0].String()], 0, "first")
 		l.builder.CreateRet(iv)
 		return
+	default:
+		panic(fmt.Sprintf("SSA op: %s is not currently supported for verification by golang_tv", val.Op.String()))
 	}
 
 	l.curFn[val.String()] = v
