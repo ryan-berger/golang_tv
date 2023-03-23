@@ -587,7 +587,7 @@ func init() {
 
 	archs = append(archs, arch{
 		name:            "ARM",
-		pkg:             "github.com/ryan-berger/golang_tv/internal/src/cmd/internal/obj/arm",
+		pkg:             "github.com/ryan-berger/golang_tv/internal/src/cmd/internal_compile/obj/arm",
 		genfile:         "../../arm/ssa.go",
 		ops:             ops,
 		blocks:          blocks,

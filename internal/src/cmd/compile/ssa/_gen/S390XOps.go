@@ -803,7 +803,7 @@ func init() {
 
 	archs = append(archs, arch{
 		name:            "S390X",
-		pkg:             "github.com/ryan-berger/golang_tv/internal/src/cmd/internal/obj/s390x",
+		pkg:             "github.com/ryan-berger/golang_tv/internal/src/cmd/internal_compile/obj/s390x",
 		genfile:         "../../s390x/ssa.go",
 		ops:             S390Xops,
 		blocks:          S390Xblocks,
@@ -813,7 +813,7 @@ func init() {
 		framepointerreg: -1, // not used
 		linkreg:         int8(num["R14"]),
 		imports: []string{
-			"github.com/ryan-berger/golang_tv/internal/src/cmd/internal/obj/s390x",
+			"github.com/ryan-berger/golang_tv/internal/src/cmd/internal_compile/obj/s390x",
 		},
 	})
 }

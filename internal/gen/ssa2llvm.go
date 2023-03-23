@@ -48,13 +48,18 @@ func (l *llvmGenerator) goTypeToLLVMType(typ *types.Type) llvm.Type {
 			l.ctx.Int64Type(),
 			l.ctx.Int64Type(),
 		}, false)
+	case types.TSTRING:
+		return l.ctx.StructType([]llvm.Type{
+			l.ctx.Int64Type(),
+			llvm.PointerType(l.ctx.Int8Type(), 0),
+		}, false)
 	case types.TARRAY:
 		return llvm.ArrayType(
 			l.goTypeToLLVMType(typ.Elem()),
 			int(typ.NumElem()),
 		)
 	case types.TPTR:
-		return llvm.PointerType(l.goTypeToLLVMType(typ.Underlying()), 0)
+		return llvm.PointerType(l.goTypeToLLVMType(typ.Elem()), 0)
 	default:
 		panic(fmt.Sprintf(`typecheck err: verification with type "%s" is not currently supported by golang_tv`, typ.String()))
 
@@ -104,26 +109,38 @@ var icmpMap = map[ssa.Op]llvm.IntPredicate{
 func (l *llvmGenerator) genVal(fn llvm.Value, val *ssa.Value) {
 	var v llvm.Value
 	switch val.Op {
+	case ssa.OpInitMem: // TODO: consider doing stack copies here
+		return
 	case ssa.OpConst64F:
 		v = llvm.ConstFloat(l.ctx.FloatType(), math.Float64frombits(uint64(val.AuxInt)))
 	case ssa.OpConst64:
 		v = llvm.ConstInt(l.ctx.Int64Type(), uint64(val.AuxInt), true)
+	case ssa.OpNilCheck:
+		ptr := l.curFnSyms[val.Args[0].String()]
+		nilCheck := l.builder.CreateICmp(llvm.IntEQ, ptr, llvm.ConstNull(ptr.Type()), fmt.Sprintf("%s_nil", val.Args[0]))
+		nilBB := l.ctx.AddBasicBlock(l.curFn, fmt.Sprintf("%s_nil_exit", val.Args[0]))
+		notNilBB := l.ctx.AddBasicBlock(l.curFn, fmt.Sprintf("%s_nil_exit", val.Args[0]))
+		l.builder.CreateCondBr(nilCheck, nilBB, notNilBB)
+
+		l.builder.SetInsertPointAtEnd(nilBB)
+		l.builder.CreateUnreachable()
+		l.builder.SetInsertPointAtEnd(notNilBB)
+		l.curBB = notNilBB
 	case ssa.OpLoad:
 		llvmType := l.goTypeToLLVMType(val.Args[0].Type.Elem())
 
-		arg := l.curFn[val.Args[0].String()]
-
+		arg := l.curFnSyms[val.Args[0].String()]
 		v = l.builder.CreateLoad(llvmType, arg, val.String())
 	case ssa.OpLocalAddr:
 		offset := val.Aux.(*ir.Name)
-		n := l.curFn[offset.Sym().Name]
+		n := l.curFnSyms[offset.Sym().Name]
 
 		a := l.builder.CreateAlloca(l.ctx.Int8Type(), fmt.Sprintf("%s_ptr", offset.Sym().Name))
 		l.builder.CreateStore(n, a)
 
 		v = a
 	case ssa.OpOffPtr:
-		arg := l.curFn[val.Args[0].String()]
+		arg := l.curFnSyms[val.Args[0].String()]
 
 		// calculate GEP as if the ptr was a char*, opaque pointers make this easy!
 		charPtr := llvm.PointerType(l.ctx.Int8Type(), 0)
@@ -133,8 +150,8 @@ func (l *llvmGenerator) genVal(fn llvm.Value, val *ssa.Value) {
 			},
 			val.String())
 	case ssa.OpIsInBounds:
-		index := l.curFn[val.Args[0].String()]
-		length := l.curFn[val.Args[1].String()]
+		index := l.curFnSyms[val.Args[0].String()]
+		length := l.curFnSyms[val.Args[1].String()]
 
 		// make sure that the int is greather t
 		gtZero := l.builder.CreateICmp(llvm.IntSGE, index, llvm.ConstInt(l.ctx.Int64Type(), 0, false), "gtZero")
@@ -142,22 +159,24 @@ func (l *llvmGenerator) genVal(fn llvm.Value, val *ssa.Value) {
 
 		v = l.builder.CreateAnd(gtZero, ltLength, val.String())
 	case ssa.OpCom64, ssa.OpCom32, ssa.OpCom16, ssa.OpCom8:
-		v = l.builder.CreateNot(l.curFn[val.Args[0].String()], val.String())
-	case ssa.OpAnd64:
-		v = l.builder.CreateAnd(l.curFn[val.Args[0].String()], l.curFn[val.Args[1].String()], val.String())
+		v = l.builder.CreateNot(l.curFnSyms[val.Args[0].String()], val.String())
+	case ssa.OpAnd64, ssa.OpAnd32, ssa.OpAnd16, ssa.OpAnd8:
+		v = l.builder.CreateAnd(l.curFnSyms[val.Args[0].String()], l.curFnSyms[val.Args[1].String()], val.String())
 	case ssa.OpLess64, ssa.OpLess32, ssa.OpLess16, ssa.OpLess8,
 		ssa.OpLeq64, ssa.OpLeq32, ssa.OpLeq16, ssa.OpLeq8,
 		ssa.OpEq64, ssa.OpEq32, ssa.OpEq16, ssa.OpEq8,
 		ssa.OpNeq64, ssa.OpNeq32, ssa.OpNeq16, ssa.OpNeq8,
 		ssa.OpLess64U, ssa.OpLess32U, ssa.OpLess16U, ssa.OpLess8U,
 		ssa.OpLeq64U, ssa.OpLeq32U, ssa.OpLeq16U, ssa.OpLeq8U:
-		v = l.builder.CreateICmp(icmpMap[val.Op], l.curFn[val.Args[0].String()], l.curFn[val.Args[1].String()], val.String())
+		v = l.builder.CreateICmp(icmpMap[val.Op], l.curFnSyms[val.Args[0].String()], l.curFnSyms[val.Args[1].String()], val.String())
 	case ssa.OpArgIntReg, ssa.OpArgFloatReg:
 		switch aux := val.Aux.(type) {
 		case *ssa.AuxNameOffset:
-			param := l.curFn[aux.Name.Sym().Name]
+			param := l.curFnSyms[aux.Name.Sym().Name]
 			if param.Type().TypeKind() == llvm.StructTypeKind {
-				v = l.builder.CreateExtractValue(l.curFn[aux.Name.Sym().Name], int(val.AuxInt), val.String())
+				alloc := l.builder.CreateAlloca(llvm.PointerType(l.ctx.Int8Type(), 0), val.String())
+				l.builder.CreateStore(param, alloc)
+				v = l.builder.CreateLoad(l.goTypeToLLVMType(val.Type), alloc, "")
 			} else {
 				v = param
 			}
@@ -165,13 +184,15 @@ func (l *llvmGenerator) genVal(fn llvm.Value, val *ssa.Value) {
 			panic("other aux types not yet supported")
 		}
 	case ssa.OpAdd64:
-		v = l.builder.CreateAdd(l.curFn[val.Args[0].String()], l.curFn[val.Args[1].String()], val.String())
+		v = l.builder.CreateAdd(l.curFnSyms[val.Args[0].String()], l.curFnSyms[val.Args[1].String()], val.String())
+	case ssa.OpMul64:
+		v = l.builder.CreateMul(l.curFnSyms[val.Args[0].String()], l.curFnSyms[val.Args[1].String()], val.String())
 	case ssa.OpAdd64F:
-		v = l.builder.CreateFAdd(l.curFn[val.Args[0].String()], l.curFn[val.Args[1].String()], val.String())
+		v = l.builder.CreateFAdd(l.curFnSyms[val.Args[0].String()], l.curFnSyms[val.Args[1].String()], val.String())
 	case ssa.OpSub64:
-		v = l.builder.CreateSub(l.curFn[val.Args[0].String()], l.curFn[val.Args[1].String()], val.String())
+		v = l.builder.CreateSub(l.curFnSyms[val.Args[0].String()], l.curFnSyms[val.Args[1].String()], val.String())
 	case ssa.OpRsh64x64:
-		rhs := l.curFn[val.Args[1].String()]
+		rhs := l.curFnSyms[val.Args[1].String()]
 
 		shouldClamp := l.builder.CreateICmp(llvm.IntSGE,
 			rhs,
@@ -179,9 +200,9 @@ func (l *llvmGenerator) genVal(fn llvm.Value, val *ssa.Value) {
 		shift := l.builder.CreateSelect(shouldClamp,
 			llvm.ConstInt(l.ctx.Int64Type(), 63, false), rhs, "clamped")
 
-		v = l.builder.CreateLShr(l.curFn[val.Args[0].String()], shift, val.String())
+		v = l.builder.CreateLShr(l.curFnSyms[val.Args[0].String()], shift, val.String())
 	case ssa.OpLsh64x64:
-		rhs := l.curFn[val.Args[1].String()]
+		rhs := l.curFnSyms[val.Args[1].String()]
 		// clamp
 		shouldClamp := l.builder.CreateICmp(llvm.IntSGE,
 			rhs,
@@ -189,17 +210,17 @@ func (l *llvmGenerator) genVal(fn llvm.Value, val *ssa.Value) {
 		shift := l.builder.CreateSelect(shouldClamp,
 			llvm.ConstInt(l.ctx.Int64Type(), 63, false), rhs, "clamped")
 
-		v = l.builder.CreateShl(l.curFn[val.Args[0].String()], shift, val.String())
+		v = l.builder.CreateShl(l.curFnSyms[val.Args[0].String()], shift, val.String())
 	case ssa.OpMakeResult:
 		ret := fn.FunctionType().ReturnType()
-		iv := l.builder.CreateInsertValue(llvm.Undef(ret), l.curFn[val.Args[0].String()], 0, "first")
+		iv := l.builder.CreateInsertValue(llvm.Undef(ret), l.curFnSyms[val.Args[0].String()], 0, "first")
 		l.builder.CreateRet(iv)
 		return
 	default:
 		panic(fmt.Sprintf("SSA op: %s is not currently supported for verification by golang_tv", val.Op.String()))
 	}
 
-	l.curFn[val.String()] = v
+	l.curFnSyms[val.String()] = v
 }
 
 func (l *llvmGenerator) genFn(fn *ssa.Func) llvm.Value {
@@ -214,11 +235,12 @@ func (l *llvmGenerator) genFn(fn *ssa.Func) llvm.Value {
 	}
 
 	llvmFn := llvm.AddFunction(l.module, name, typ)
+	l.curFn = llvmFn
 
 	goFnType := fn.Type.FuncType()
 	goParams := goFnType.Params.Fields()
 	for i, p := range goParams.Slice() {
-		l.curFn[p.Sym.Name] = llvmFn.Param(i)
+		l.curFnSyms[p.Sym.Name] = llvmFn.Param(i)
 	}
 
 	indexedBlocks := make(map[string]llvm.BasicBlock, len(fn.Blocks))
@@ -229,6 +251,7 @@ func (l *llvmGenerator) genFn(fn *ssa.Func) llvm.Value {
 	for _, b := range fn.Blocks {
 		bb := indexedBlocks[b.String()]
 		l.builder.SetInsertPointAtEnd(bb)
+		l.curBB = bb
 
 		for _, v := range b.Values {
 			l.genVal(llvmFn, v)
@@ -236,7 +259,7 @@ func (l *llvmGenerator) genFn(fn *ssa.Func) llvm.Value {
 
 		switch b.Kind {
 		case ssa.BlockIf:
-			cond := l.curFn[b.Controls[0].String()]
+			cond := l.curFnSyms[b.Controls[0].String()]
 			then, otherwise := indexedBlocks[b.Succs[0].Block().String()], indexedBlocks[b.Succs[1].Block().String()]
 			l.builder.CreateCondBr(cond, then, otherwise)
 		case ssa.BlockExit:
@@ -248,10 +271,12 @@ func (l *llvmGenerator) genFn(fn *ssa.Func) llvm.Value {
 }
 
 type llvmGenerator struct {
-	ctx     llvm.Context
-	builder llvm.Builder
-	module  llvm.Module
-	curFn   map[string]llvm.Value
+	ctx       llvm.Context
+	builder   llvm.Builder
+	module    llvm.Module
+	curFn     llvm.Value
+	curBB     llvm.BasicBlock
+	curFnSyms map[string]llvm.Value
 }
 
 func SSA2LLVM(module llvm.Module, src, tgt *ssa.Func) (llvm.Value, llvm.Value) {
@@ -261,15 +286,15 @@ func SSA2LLVM(module llvm.Module, src, tgt *ssa.Func) (llvm.Value, llvm.Value) {
 	defer builder.Dispose()
 
 	b := &llvmGenerator{
-		ctx:     ctx,
-		builder: builder,
-		module:  module,
-		curFn:   make(map[string]llvm.Value),
+		ctx:       ctx,
+		builder:   builder,
+		module:    module,
+		curFnSyms: make(map[string]llvm.Value),
 	}
 
 	srcLLVM := b.genFn(src)
 	//_ = b.genFn(src)
-	b.curFn = make(map[string]llvm.Value)
+	b.curFnSyms = make(map[string]llvm.Value)
 	tgtLLVM := b.genFn(tgt)
 	//_ = b.genFn(tgt)
 

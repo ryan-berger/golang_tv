@@ -196,7 +196,7 @@ func genOp() {
 	fmt.Fprintln(w, "package ssa")
 
 	fmt.Fprintln(w, "import (")
-	fmt.Fprintln(w, "\"github.com/ryan-berger/golang_tv/internal/src/cmd/internal/obj\"")
+	fmt.Fprintln(w, "\"github.com/ryan-berger/golang_tv/internal/src/cmd/internal_compile/obj\"")
 	for _, a := range archs {
 		if a.pkg != "" {
 			fmt.Fprintf(w, "%q\n", a.pkg)
@@ -427,11 +427,11 @@ func genOp() {
 		num := map[string]int8{}
 		for i, r := range a.regnames {
 			num[r] = int8(i)
-			pkg := a.pkg[len("github.com/ryan-berger/golang_tv/internal/src/cmd/internal/obj/"):]
-			var objname string // name in github.com/ryan-berger/golang_tv/internal/src/cmd/internal/obj/$ARCH
+			pkg := a.pkg[len("github.com/ryan-berger/golang_tv/internal/src/cmd/internal_compile/obj/"):]
+			var objname string // name in github.com/ryan-berger/golang_tv/internal/src/cmd/internal_compile/obj/$ARCH
 			switch r {
 			case "SB":
-				// SB isn't a real register.  github.com/ryan-berger/golang_tv/internal/src/cmd/internal/obj expects 0 in this case.
+				// SB isn't a real register.  github.com/ryan-berger/golang_tv/internal/src/cmd/internal_compile/obj expects 0 in this case.
 				objname = "0"
 			case "SP":
 				objname = pkg + ".REGSP"

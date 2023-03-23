@@ -121,7 +121,7 @@ func genAllocators() {
 	fmt.Fprintln(w, "package ssa")
 
 	fmt.Fprintln(w, "import (")
-	fmt.Fprintln(w, "\"internal/unsafeheader\"")
+	fmt.Fprintln(w, "\"github.com/ryan-berger/golang_tv/internal/src/internal/unsafeheader\"")
 	fmt.Fprintln(w, "\"math/bits\"")
 	fmt.Fprintln(w, "\"sync\"")
 	fmt.Fprintln(w, "\"unsafe\"")

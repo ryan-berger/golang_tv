@@ -1,6 +1,8 @@
-github.com/ryan-berger/go-llvm v0.0.0-20230319020707-41fdb91ad8a9 h1:B96VEl9WCmflKY8jVq1LRA308aGaMHmr41P1/DlMuyk=
-github.com/ryan-berger/go-llvm v0.0.0-20230319020707-41fdb91ad8a9/go.mod h1:GFbusT2VTA4I+l4j80b17KFK+6whv69Wtny5U+T8RR0=
 golang.org/x/arch v0.3.0 h1:02VY4/ZcO/gBOH6PUaoiptASxtXU10jazRCP865E97k=
 golang.org/x/arch v0.3.0/go.mod h1:5om86z9Hs0C8fWVUuoMHwpExlXzs5Tkyp9hOrfG7pp8=
 golang.org/x/sys v0.6.0 h1:MVltZSvRTcU2ljQOhs94SXPftV6DCNnZViHeQps87pQ=
 golang.org/x/sys v0.6.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
+golang.org/x/tools v0.7.0 h1:W4OVu8VVOaIO0yzWMNdepAulS7YfoS3Zabrm8DOXXU4=
+golang.org/x/tools v0.7.0/go.mod h1:4pg6aUX35JBAogB10C9AtvVL+qowtN4pT3CGSQex14s=
+tinygo.org/x/go-llvm v0.0.0-20221212185523-e80bc424a2b1 h1:8AXVEr/YUtQll2KN2KkQYRJbLDfRK7W0fQjpPcJq0+c=
+tinygo.org/x/go-llvm v0.0.0-20221212185523-e80bc424a2b1/go.mod h1:GFbusT2VTA4I+l4j80b17KFK+6whv69Wtny5U+T8RR0=

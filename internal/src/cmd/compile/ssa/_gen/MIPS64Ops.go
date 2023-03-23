@@ -469,7 +469,7 @@ func init() {
 
 	archs = append(archs, arch{
 		name:            "MIPS64",
-		pkg:             "github.com/ryan-berger/golang_tv/internal/src/cmd/internal/obj/mips",
+		pkg:             "github.com/ryan-berger/golang_tv/internal/src/cmd/internal_compile/obj/mips",
 		genfile:         "../../mips64/ssa.go",
 		ops:             ops,
 		blocks:          blocks,

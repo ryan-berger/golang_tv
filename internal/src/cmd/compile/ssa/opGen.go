@@ -5039,7 +5039,6 @@ var opcodeTable = [...]opInfo{
 		name:         "LoweredCtz32",
 		argLen:       1,
 		clobberFlags: true,
-		asm:          x86.ABSFL,
 		reg: regInfo{
 			inputs: []inputInfo{
 				{0, 239}, // AX CX DX BX BP SI DI
@@ -39196,9 +39195,10 @@ var opcodeTable = [...]opInfo{
 		generic: true,
 	},
 	{
-		name:    "NilCheck",
-		argLen:  2,
-		generic: true,
+		name:     "NilCheck",
+		argLen:   2,
+		nilCheck: true,
+		generic:  true,
 	},
 	{
 		name:      "GetG",

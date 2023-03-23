@@ -262,7 +262,7 @@ func init() {
 
 	archs = append(archs, arch{
 		name:            "Wasm",
-		pkg:             "github.com/ryan-berger/golang_tv/internal/src/cmd/internal/obj/wasm",
+		pkg:             "github.com/ryan-berger/golang_tv/internal/src/cmd/internal_compile/obj/wasm",
 		genfile:         "../../wasm/ssa.go",
 		ops:             WasmOps,
 		blocks:          nil,

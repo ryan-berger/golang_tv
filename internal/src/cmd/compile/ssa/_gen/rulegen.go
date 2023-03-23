@@ -582,7 +582,7 @@ func fprint(w io.Writer, n Node) {
 			"fmt",
 			"github.com/ryan-berger/golang_tv/internal/src/internal/buildcfg",
 			"math",
-			"github.com/ryan-berger/golang_tv/internal/src/cmd/internal/obj",
+			"github.com/ryan-berger/golang_tv/internal/src/cmd/internal_compile/obj",
 			"github.com/ryan-berger/golang_tv/internal/src/cmd/compile/base",
 			"github.com/ryan-berger/golang_tv/internal/src/cmd/compile/types",
 			"github.com/ryan-berger/golang_tv/internal/src/cmd/compile/ir",

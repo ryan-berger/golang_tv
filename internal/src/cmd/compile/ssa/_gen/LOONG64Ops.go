@@ -470,7 +470,7 @@ func init() {
 
 	archs = append(archs, arch{
 		name:     "LOONG64",
-		pkg:      "github.com/ryan-berger/golang_tv/internal/src/cmd/internal/obj/loong64",
+		pkg:      "github.com/ryan-berger/golang_tv/internal/src/cmd/internal_compile/obj/loong64",
 		genfile:  "../../loong64/ssa.go",
 		ops:      ops,
 		blocks:   blocks,

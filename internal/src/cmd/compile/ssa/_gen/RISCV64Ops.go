@@ -467,7 +467,7 @@ func init() {
 
 	archs = append(archs, arch{
 		name:            "RISCV64",
-		pkg:             "github.com/ryan-berger/golang_tv/internal/src/cmd/internal/obj/riscv",
+		pkg:             "github.com/ryan-berger/golang_tv/internal/src/cmd/internal_compile/obj/riscv",
 		genfile:         "../../riscv64/ssa.go",
 		ops:             RISCV64ops,
 		blocks:          RISCV64blocks,

@@ -21,7 +21,9 @@ func init() {
 			// dead code
 			passes = append(passes[:i],
 				pass{name: "golang_tv deadcode", fn: deadcode},
-				pass{name: "golang_tv schedule", fn: schedule}, // block values are out of order???
+				pass{name: "tighten", fn: tighten, required: true}, // move values closer to their uses
+				pass{name: "layout", fn: layout, required: true},   // schedule blocks
+				pass{name: "golang_tv schedule", fn: schedule},     // block values are out of order???
 			)
 			return
 		}
